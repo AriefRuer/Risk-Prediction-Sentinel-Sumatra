@@ -1,0 +1,40 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "sentinel-sumatra-3c917",
+          "appId": "1:350226436436:android:84cf75c6e05f18552eb8c1",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "sentinel-sumatra-3c917",
+          "configurations": {
+            "android": "1:350226436436:android:84cf75c6e05f18552eb8c1",
+            "ios": "1:350226436436:ios:8c16a1eaef46ac052eb8c1",
+            "macos": "1:350226436436:ios:8c16a1eaef46ac052eb8c1",
+            "web": "1:350226436436:web:c32b395f7523c91e2eb8c1",
+            "windows": "1:350226436436:web:ed6676f271b3f00d2eb8c1"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "runtime": "python313"
+    }
+  ]
+}

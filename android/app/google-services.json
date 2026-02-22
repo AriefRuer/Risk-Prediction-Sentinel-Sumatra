@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "350226436436",
+    "project_id": "sentinel-sumatra-3c917",
+    "storage_bucket": "sentinel-sumatra-3c917.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:350226436436:android:84cf75c6e05f18552eb8c1",
+        "android_client_info": {
+          "package_name": "com.example.sentinel_sumatra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDz4OMa6TCftAvnJj4ELvKu-Hfp61T2XYo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
