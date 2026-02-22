@@ -141,7 +141,8 @@ To meet the hackathon deadline, the secret to winning is **Parallel Execution**.
 
 ### Member 3: Systems Integrator (The "Plumber") ⚙️
 **The Goal:** Make the UI (Member 2) and the AI (Member 1) talk to each other in real-time.
-- [x] **Firebase Setup:** Configure Authentication, Firestore (the database), and Cloud Messaging (FCM).
+- [x] **Firebase Setup (Database):** Configure Firestore (the database) and initialize the App.
+- [ ] **Firebase Setup (Auth/FCM):** Configure User Authentication and Cloud Messaging (FCM) Push Notifications.
 - [x] **Real-time Streams:** Write the code that "Listens" to the Firestore database so the UI updates instantly. *(Riverpod Streams implemented)*
 - [ ] **Navigation & Logic:** Handle the transition between the splash screen, the main map, and the evacuation route views.
 - [x] **Hand-off:** The Integrated App to Member 4 for final testing and demo.
