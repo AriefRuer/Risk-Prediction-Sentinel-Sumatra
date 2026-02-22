@@ -119,11 +119,43 @@ Because we cannot rely on the blocked Google Cloud Scheduler, we added an HTTP e
 
 ---
 
-## 📋 Outstanding Tasks (Next Steps)
+## 📋 Hackathon Task Distribution
 
-For the final production release, the following tasks must be completed:
+To meet the hackathon deadline, the secret to winning is **Parallel Execution**. Each member has a clear "ownership zone."
 
-- [ ] **Upgrade to Blaze Plan:** Attach a Google Cloud Billing account and set hard budget caps ($1.00) to allow deploying the `functions/main.py` code to production safely.
-- [ ] **Deploy Cloud Function:** Run `firebase deploy --only functions` so the AI engine runs automatically every hour on Google servers without needing a laptop open.
-- [ ] **Remove Local HTTP Trigger:** Delete the temporary `package:http` code from `lib/screens/skeleton_screen.dart` to prevent users from manually spanning the back-end AI.
-- [ ] **UI Polish:** Add weather map overlays and dynamic styling to the Google Map polygon based on real-time flood data.
+### Member 1: AI Architect & Backend Lead 🧠
+**The Goal:** Build the "Brain" of the project and the API that powers it.
+- [x] **AI Prompt Engineering:** Create the system instructions for Gemini 1.5 Flash. Ensure it returns structured JSON (e.g., `{"risk_score": 85, "advice": "Move to Zone B"}`).
+- [x] **Sentinel Hub / GEE Scripting:** Extract the forest canopy and soil moisture data for Aceh. *(Prototype Sentinel Hub OAuth implemented)*
+- [x] **Cloud Logic:** Implement the "Decision Engine" on Cloud Run. This script takes satellite data -> sends it to Gemini -> returns a result.
+- [x] **Hand-off:** Provides the API Endpoints or Firebase Cloud Functions to Member 3.
+
+### Member 2: Flutter UI/UX Engineer 🎨
+**The Goal:** Build a high-fidelity, polished mobile interface that looks like a finished product.
+- [x] **The Map Shell:** Implement the Google Maps SDK. Set up the initial camera position on Aceh and create the logic to toggle different layers.
+- [x] **Dashboard Components:** Create the "Risk Gauge," "Emergency Notification cards," and "Safety Checklists." *(Skeleton UI built; needs polish)*
+- [x] **The "AI Advisor" Chat UI:** Build a clean, floating chat interface where users can ask Gemini for specific advice. *(Chat input wired; needs UI polish)*
+- [ ] **Android View & UI Overhaul:** Port the web view successfully to a native Android build (`flutter run -d android`) and build out the final polished disaster-resilience dashboard.
+- [ ] **Animations:** Add micro-interactions when the AI terminal types out new advice or the Risk Score flashes from "Low" to "Critical".
+- [ ] **Hand-off:** Provides the Frontend UI Codebase to Member 3 for data integration.
+
+### Member 3: Systems Integrator (The "Plumber") ⚙️
+**The Goal:** Make the UI (Member 2) and the AI (Member 1) talk to each other in real-time.
+- [x] **Firebase Setup:** Configure Authentication, Firestore (the database), and Cloud Messaging (FCM).
+- [x] **Real-time Streams:** Write the code that "Listens" to the Firestore database so the UI updates instantly. *(Riverpod Streams implemented)*
+- [ ] **Navigation & Logic:** Handle the transition between the splash screen, the main map, and the evacuation route views.
+- [x] **Hand-off:** The Integrated App to Member 4 for final testing and demo.
+
+### Member 4: Impact, Data & QA Lead 📊
+**The Goal:** Ensure the project hits the "Impact" (60%) and "Innovation" (10%) scores.
+- [ ] **SDG Documentation:** Write the "Problem Statement" and "SDG Alignment" (Section 1). Use real data from the Aceh floods to justify the tech.
+- [ ] **User Validation (Section 2):** Conduct 3–5 "Speed Interviews" with peers to get feedback on the UI and document the iterations.
+- [ ] **The Demo Video:** Script and record the walkthrough. Ensure the video clearly shows the AI Reasoning and the Google Tech integration.
+- [ ] **Hand-off:** The Final Submission Package (GitHub Repo + Video + Slides).
+
+---
+
+### 🤝 Team Sync Strategy
+- **Morning (15m):** Stand-up. "What prompt are you working on today?"
+- **Mid-day (15m):** Code Merge. Member 3 pulls Member 1’s API and Member 2’s Widgets into the main branch.
+- **Evening (30m):** Vibe Check. Member 4 tests the app and reports "hallucinations" or UI bugs for the team to fix.
