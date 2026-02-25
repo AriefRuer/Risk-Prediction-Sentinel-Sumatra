@@ -1,162 +1,204 @@
-# Sentinel-Sumatra (KitaHack 26)
+# Sentinel Sumatra 🛰️
 
-Sentinel-Sumatra is a prototype disaster-resilience application designed to provide real-time landslide and flood risk assessments using Copernicus Satellite Imagery (Sentinel-2) and Google's Gemini 2.0 Flash AI. 
-
-This repository contains:
-1.  **Frontend**: A cross-platform Flutter application with real-time Google Maps integration and a live AI diagnostic terminal.
-2.  **Backend (Functions)**: A Python-based Firebase Cloud Function that fetches satellite imagery, calculates NDVI/BSI indices, queries Gemini for risk assessment, and securely pushes the results to Firestore.
+A real-time flood and landslide risk monitoring app for Aceh Jaya, Indonesia. Built with Flutter + Firebase + Copernicus Sentinel-2 satellite imagery + Gemini AI.
 
 ---
 
-## 🛠 Prerequisites
+## Features
 
-Before cloning and running this project, ensure you have the following installed on your machine:
-
-1.  [Flutter SDK](https://docs.flutter.dev/get-started/install) (Version 3.19.0 or higher)
-2.  [Python 3.10+](https://www.python.org/downloads/)
-3.  [Firebase CLI](https://firebase.google.com/docs/cli) (`npm install -g firebase-tools`)
-4.  A [Google Cloud/Firebase Project](https://console.firebase.google.com/)
+- 🗺️ **Live Risk Map** — Google Maps with hazard zone polygon and safe evacuation route overlay
+- 📡 **Satellite Analytics** — NDVI, BSI, NDWI, and Soil Moisture indices from Copernicus Sentinel-2
+- 🤖 **Streaming AI Chatbot** — Ask Sentinel AI about flood risk and evacuation; replies stream word-by-word via Gemini 2.0 Flash
+- 📍 **Safety Zone Card** — GPS-based detection of whether you are in the Red Zone or Safe Zone
+- 🔔 **Push Notifications** — Local and FCM notifications when risk escalates to Critical
+- 🔄 **Offline Persistence** — Firestore offline caching keeps the app functional without internet
 
 ---
 
-## 🚀 Setup Instructions
+## Prerequisites
 
-Follow these steps exactly to run the Sentinel-Sumatra application locally.
+### 1. System Tools
+| Tool | Version | Notes |
+|------|---------|-------|
+| Flutter SDK | ≥ 3.11.0 | [Install guide](https://docs.flutter.dev/get-started/install) |
+| Dart SDK | included with Flutter | |
+| Android Studio | Latest stable | Required for the Android emulator |
+| Java JDK | 17 | Set `JAVA_HOME` to JDK 17 |
+| Python | 3.11+ | For the Cloud Functions backend |
+| Firebase CLI | Latest | `npm install -g firebase-tools` |
+| Node.js | ≥ 18 | Required by Firebase CLI |
 
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/YOUR-USERNAME/sentinel-sumatra.git
-cd sentinel-sumatra
+### 2. Android Emulator (Required)
+
+This app **must run on the Android Emulator** — it does NOT run on a physical device without additional Google Maps and Firebase setup.
+
+**Create the emulator in Android Studio:**
+1. Open **Android Studio → Device Manager → Add Device**
+2. Choose **Pixel 7** (or any phone with Google Play support)
+3. Select system image: **API 35, x86_64, Google APIs**
+4. Click **Finish** — the emulator will appear in Device Manager
+5. Start the emulator before running `flutter run`
+
+> ⚠️ You must use a **Google APIs** image (not plain AOSP) for Google Maps to work.
+
+### 3. Simulating GPS in the Emulator
+
+Since your laptop may not have a GPS chip, you must set a simulated location:
+
+1. Start the emulator
+2. Click **`⋯`** (Extended Controls) in the emulator side toolbar
+3. Go to the **Location** tab
+4. Enter coordinates:
+   - **Latitude:** `5.5500`
+   - **Longitude:** `95.3167`
+5. Click **Set Location**
+
+The app will then show whether you are in the Safe Zone or Red Zone.
+
+---
+
+## Flutter Dependencies
+
+All dependencies are in `pubspec.yaml` and installed automatically with `flutter pub get`.
+
+| Package | Purpose |
+|---------|---------|
+| `flutter_riverpod` | State management |
+| `cloud_firestore` | Real-time database + offline persistence |
+| `firebase_core` | Firebase initialization |
+| `firebase_messaging` | FCM push notifications |
+| `google_maps_flutter` | Interactive map with polygon/polyline overlays |
+| `flutter_local_notifications` | Local on-device notifications |
+| `geolocator` | GPS location for safety zone detection |
+| `flutter_dotenv` | Load API keys from `.env` file |
+| `http` | HTTP requests to Cloud Functions |
+| `intl` | Date/time formatting |
+
+---
+
+## Environment Setup
+
+### 1. Create the `.env` file
+
+Create `sentinel_sumatra/.env` (it is gitignored):
+
+```
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 ```
 
-### Step 2: Configure the Flutter App (Frontend)
-Initialize the Flutter dependencies.
+### 2. Firebase Configuration
+
+Ensure the following files exist (provided by Firebase Console setup):
+- `sentinel_sumatra/android/app/google-services.json`
+- `sentinel_sumatra/lib/firebase_options.dart`
+
+### 3. Cloud Functions Environment (`.env` in `/functions`)
+
+Create `sentinel_sumatra/functions/.env`:
+
+```
+CDSE_CLIENT_ID=your_copernicus_client_id
+CDSE_CLIENT_SECRET=your_copernicus_client_secret
+GEMINI_API_KEY=your_google_gemini_api_key
+```
+
+Get these from:
+- **Copernicus credentials:** [dataspace.copernicus.eu](https://dataspace.copernicus.eu) → OAuth → Create client
+- **Gemini API key:** [aistudio.google.com](https://aistudio.google.com)
+
+---
+
+## Running the App
+
+### Step 1 — Install Flutter dependencies
 ```bash
-# Get Flutter packages
+cd sentinel_sumatra
 flutter pub get
 ```
 
-You must link your own Firebase project to the Flutter app. 
-*(Note: Ensure you have run `firebase login` first)*
+### Step 2 — Start the Firebase Emulator (required for AI chatbot)
 ```bash
-# Configure Firebase for Flutter (Generates lib/firebase_options.dart)
-flutterfire configure
+cd sentinel_sumatra/functions
+pip install -r requirements.txt       # first time only
+cd ..
+firebase emulators:start
 ```
 
-### Step 3: Add Frontend API Keys
-To render the Risk polygons, the Flutter app requires a Google Maps API Key.
-1. In the **root** repository directory, create a new file named exactly `.env`.
-2. Add the Google Maps key:
-```ini
-GOOGLE_MAPS_API_KEY="[YOUR_GOOGLE_MAPS_API_KEY_HERE]"
-```
+The emulator UI will open at `http://127.0.0.1:4000`. You should see the Functions emulator running.
 
-### Step 4: Configure the Python AI Backend
-The AI logic runs inside a Python virtual environment to keep dependencies clean.
+### Step 3 — Start the Android Emulator
+
+Open Android Studio → Device Manager → Start your emulator. Wait until it fully boots.
+
+### Step 4 — Run the Flutter app
 ```bash
-cd functions
-
-# Create the virtual environment
-python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On Mac/Linux:
-source venv/bin/activate
-
-# Install required AI and Satellite packages
-pip install -r requirements.txt
+cd sentinel_sumatra
+flutter run
 ```
 
-### Step 5: Add Backend API Keys (Secrets)
-The AI backend requires API keys to reach the satellites and Gemini. 
-1. Inside the `functions/` folder, create a new file named exactly `.env`.
-2. Add the groups' API KEYS: 
-```ini
-CDSE_CLIENT_ID="[YOUR_COPERNICUS_ID]"
-CDSE_CLIENT_SECRET="[YOUR_COPERNICUS_SECRET]"
-GEMINI_API_KEY="[YOUR_GEMINI_API_KEY]"
-```
-*(Note: `.env` is already added to `.gitignore`, so your keys are safe from being pushed to GitHub).*
+Flutter will automatically detect the running Android emulator and deploy the app.
 
 ---
 
-## 🏃 Running the Application
+## Testing the Features
 
-### The Current Architecture (No Blaze Plan)
-> [!WARNING]
-> **Firebase Blaze Plan Limitation**
-> Currently, the Google Cloud servers require a "Blaze" (Pay-as-you-go) billing account attached to deploy the Python Cloud Function to the internet. 
-> 
-> Because this project does not currently have a credit card attached, **the AI Python code cannot be deployed to Google's servers.**
+### Trigger the AI Pipeline (Satellite Data → Gemini Risk Score)
 
-To work around this limitation for local testing and Hackathon presentations, we run the Python backend locally on your laptop using the Firebase Emulator, while the Flutter app connects to the real Firestore Database on the internet.
-
-### 1. Start the Local Python AI Engine
-Open a terminal, activate your virtual environment, and run the emulator:
-```bash
-cd functions
-venv\Scripts\activate
-
-# Start the local simulated Google server
-firebase emulators:start --only functions
+With the Firebase emulator running, open your browser and go to:
 ```
-Wait until you see `All emulators ready!`.
-
-### 2. Start the Flutter Web App
-Open a completely **separate terminal**, ensure you are in the root `sentinel_sumatra/` folder, and launch Chrome:
-```bash
-flutter run -d chrome
+http://127.0.0.1:5001/sentinel-sumatra-3c917/us-central1/test_sentinel_hub_check
 ```
 
-### 3. Trigger the AI 
-Because we cannot rely on the blocked Google Cloud Scheduler, we added an HTTP endpoint to manually force the AI to run.
-1. When your Flutter App opens in Chrome, click the **Puzzle Piece (Mock Alert)** icon in the top right corner.
-2. The app will send an HTTP request to the local Firebase Emulator (`http://127.0.0.1:5001/...`), triggering the Python script.
-3. The Python script reaches out locally to Copernicus and Gemini, and saves the new Risk Score to the live Cloud Database.
-4. The Flutter UI listens to the live Cloud Database and updates instantly!
+Or tap the **satellite icon** in the app's top-right AppBar. The app will update its risk level, satellite analytics, and AI advice within a few seconds.
+
+### Test Critical Alert Notification
+
+Tap the **"Test Alert"** button (red FAB, bottom right). A push notification will appear and the risk level on the map will turn Critical with the red polygon.
+
+### Test the AI Chatbot
+
+Tap the **"AI Advisor"** button (dark blue FAB). Type a question such as:
+- *"Is it safe to stay at home?"*
+- *"What does NDWI mean?"*
+- *"How do I evacuate?"*
+
+The reply streams word-by-word (make sure the Firebase emulator is running for this to work).
 
 ---
 
-## 📋 Hackathon Task Distribution
+## Project Structure
 
-To meet the hackathon deadline, the secret to winning is **Parallel Execution**. Each member has a clear "ownership zone."
-
-### Member 1: AI Architect & Backend Lead 🧠
-**The Goal:** Build the "Brain" of the project and the API that powers it.
-- [x] **AI Prompt Engineering:** Create the system instructions for Gemini 1.5 Flash. Ensure it returns structured JSON (e.g., `{"risk_score": 85, "advice": "Move to Zone B"}`).
-- [x] **Sentinel Hub / GEE Scripting:** Extract the forest canopy and soil moisture data for Aceh. *(Prototype Sentinel Hub OAuth implemented)*
-- [x] **Cloud Logic:** Implement the "Decision Engine" on Cloud Run. This script takes satellite data -> sends it to Gemini -> returns a result.
-- [x] **Hand-off:** Provides the API Endpoints or Firebase Cloud Functions to Member 3.
-
-### Member 2: Flutter UI/UX Engineer 🎨
-**The Goal:** Build a high-fidelity, polished mobile interface that looks like a finished product.
-- [x] **The Map Shell:** Implement the Google Maps SDK. Set up the initial camera position on Aceh and create the logic to toggle different layers.
-- [x] **Dashboard Components:** Create the "Risk Gauge," "Emergency Notification cards," and "Safety Checklists." *(Skeleton UI built; needs polish)*
-- [x] **The "AI Advisor" Chat UI:** Build a clean, floating chat interface where users can ask Gemini for specific advice. *(Chat input wired; needs UI polish)*
-- [ ] **Android View & UI Overhaul:** Port the web view successfully to a native Android build (`flutter run -d android`) and build out the final polished disaster-resilience dashboard.
-- [ ] **Animations:** Add micro-interactions when the AI terminal types out new advice or the Risk Score flashes from "Low" to "Critical".
-- [ ] **Hand-off:** Provides the Frontend UI Codebase to Member 3 for data integration.
-
-### Member 3: Systems Integrator (The "Plumber") ⚙️
-**The Goal:** Make the UI (Member 2) and the AI (Member 1) talk to each other in real-time.
-- [x] **Firebase Setup (Database):** Configure Firestore (the database) and initialize the App.
-- [ ] **Firebase Setup (Auth/FCM):** Configure User Authentication and Cloud Messaging (FCM) Push Notifications.
-- [x] **Real-time Streams:** Write the code that "Listens" to the Firestore database so the UI updates instantly. *(Riverpod Streams implemented)*
-- [ ] **Navigation & Logic:** Handle the transition between the splash screen, the main map, and the evacuation route views.
-- [x] **Hand-off:** The Integrated App to Member 4 for final testing and demo.
-
-### Member 4: Impact, Data & QA Lead 📊
-**The Goal:** Ensure the project hits the "Impact" (60%) and "Innovation" (10%) scores.
-- [ ] **SDG Documentation:** Write the "Problem Statement" and "SDG Alignment" (Section 1). Use real data from the Aceh floods to justify the tech.
-- [ ] **User Validation (Section 2):** Conduct 3–5 "Speed Interviews" with peers to get feedback on the UI and document the iterations.
-- [ ] **The Demo Video:** Script and record the walkthrough. Ensure the video clearly shows the AI Reasoning and the Google Tech integration.
-- [ ] **Hand-off:** The Final Submission Package (GitHub Repo + Video + Slides).
+```
+sentinel_sumatra/
+├── lib/
+│   ├── main.dart                  # App entry point, Firebase + notification init
+│   ├── models/
+│   │   └── alert_model.dart       # AlertModel with satellite indices
+│   ├── providers/
+│   │   └── alert_provider.dart    # Riverpod providers for Firestore stream
+│   ├── screens/
+│   │   └── skeleton_screen.dart   # Main screen: map, analytics, chatbot
+│   └── services/
+│       └── firebase_service.dart  # Firestore stream + FCM subscription
+├── functions/
+│   ├── main.py                    # Cloud Functions: scheduler, chatbot, FCM trigger
+│   ├── requirements.txt           # Python dependencies
+│   └── .env                      # Secrets (gitignored)
+├── android/
+│   └── app/
+│       ├── build.gradle.kts       # compileSdk 36, desugaring, JVM 17
+│       └── src/main/
+│           └── AndroidManifest.xml
+└── .env                           # Google Maps API key (gitignored)
+```
 
 ---
 
-### 🤝 Team Sync Strategy
-- **Morning (15m):** Stand-up. "What prompt are you working on today?"
-- **Mid-day (15m):** Code Merge. Member 3 pulls Member 1’s API and Member 2’s Widgets into the main branch.
-- **Evening (30m):** Vibe Check. Member 4 tests the app and reports "hallucinations" or UI bugs for the team to fix.
+## Known Emulator Limitations
+
+| Warning in logs | Cause | Impact |
+|----------------|-------|--------|
+| `Skipped N frames` | JIT compiler warming up on first launch | Resolves after ~30s, not a bug |
+| `Cannot enable MyLocation layer` | Location permission check on emulator | Safe to ignore — `myLocationEnabled` is disabled in code |
+| `E/GoogleApiManager: SecurityException` | Google Play Services not fully configured on emulator | Google Maps still loads map tiles correctly |
+| `UnknownHostException: firestore.googleapis.com` | Emulator network latency | Firestore retries automatically; uses cached data in the meantime |

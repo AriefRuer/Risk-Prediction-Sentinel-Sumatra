@@ -43,12 +43,9 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script>
-    // Security enhancement: Flutter will load the backend API Key from dart space.
-    // However, Google Maps JavaScript SDK requires the tag in HTML.
-    // To protect the key, we will inject it securely at runtime using dart:js or
-    // by passing it via --dart-define during the build step.
-  </script>
+  <!-- Google Maps API Key required for Flutter Web -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnQAZ-LIr55yMmGjG40onUhABFh55HHu8"></script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 

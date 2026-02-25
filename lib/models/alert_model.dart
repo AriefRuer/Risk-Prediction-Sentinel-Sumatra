@@ -8,6 +8,11 @@ class AlertModel {
   final String aiAdvice;
   final String statusMessage;
   final bool isFromCache;
+  // Satellite indices from Copernicus Sentinel-2
+  final double ndvi; // Vegetation health
+  final double bsi; // Bare soil / erosion risk
+  final double ndwi; // Surface water / flood indicator
+  final double moisture; // Soil moisture saturation
 
   AlertModel({
     required this.riskLevel,
@@ -16,6 +21,10 @@ class AlertModel {
     required this.aiAdvice,
     required this.statusMessage,
     this.isFromCache = false,
+    this.ndvi = 0.0,
+    this.bsi = 0.0,
+    this.ndwi = 0.0,
+    this.moisture = 0.0,
   });
 
   factory AlertModel.fromFirestore(DocumentSnapshot doc) {
@@ -48,18 +57,10 @@ class AlertModel {
       aiAdvice: data['aiAdvice'] ?? 'No advice available.',
       statusMessage: data['statusMessage'] ?? 'Awaiting status...',
       isFromCache: doc.metadata.isFromCache,
+      ndvi: (data['ndvi'] as num?)?.toDouble() ?? 0.0,
+      bsi: (data['bsi'] as num?)?.toDouble() ?? 0.0,
+      ndwi: (data['ndwi'] as num?)?.toDouble() ?? 0.0,
+      moisture: (data['moisture'] as num?)?.toDouble() ?? 0.0,
     );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'riskLevel': riskLevel,
-      'predictedTime': Timestamp.fromDate(predictedTime),
-      'safeRoutePoints': safeRoutePoints
-          .map((e) => GeoPoint(e.latitude, e.longitude))
-          .toList(),
-      'aiAdvice': aiAdvice,
-      'statusMessage': statusMessage,
-    };
   }
 }

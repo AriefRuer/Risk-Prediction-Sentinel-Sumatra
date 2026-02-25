@@ -3,3 +3,4 @@ requests
 oauthlib
 requests_oauthlib
 google-genai
+python-dotenv
