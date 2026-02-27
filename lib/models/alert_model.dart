@@ -8,6 +8,7 @@ class AlertModel {
   final String aiAdvice;
   final String statusMessage;
   final bool isFromCache;
+  final List<LatLng> hazardPoints; // Central coordinates of specific danger hot-spots.
   // Satellite indices from Copernicus Sentinel-2
   final double ndvi; // Vegetation health
   final double bsi; // Bare soil / erosion risk
@@ -21,6 +22,7 @@ class AlertModel {
     required this.aiAdvice,
     required this.statusMessage,
     this.isFromCache = false,
+    this.hazardPoints = const [],
     this.ndvi = 0.0,
     this.bsi = 0.0,
     this.ndwi = 0.0,
@@ -37,6 +39,7 @@ class AlertModel {
         safeRoutePoints: [],
         aiAdvice: 'No data',
         statusMessage: 'No data',
+        hazardPoints: [],
       );
     }
 
@@ -44,7 +47,16 @@ class AlertModel {
     if (data['safeRoutePoints'] != null) {
       for (var point in data['safeRoutePoints']) {
         if (point is GeoPoint) {
-          points.add(LatLng(point.latitude, point.longitude));
+           points.add(LatLng(point.latitude, point.longitude));
+        }
+      }
+    }
+
+    List<LatLng> hazards = [];
+    if (data['hazardPoints'] != null) {
+      for (var point in data['hazardPoints']) {
+        if (point is GeoPoint) {
+           hazards.add(LatLng(point.latitude, point.longitude));
         }
       }
     }
@@ -54,6 +66,7 @@ class AlertModel {
       predictedTime:
           (data['predictedTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
       safeRoutePoints: points,
+      hazardPoints: hazards,
       aiAdvice: data['aiAdvice'] ?? 'No advice available.',
       statusMessage: data['statusMessage'] ?? 'Awaiting status...',
       isFromCache: doc.metadata.isFromCache,

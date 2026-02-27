@@ -167,6 +167,20 @@ def run_sentinel_hub_check(event: scheduler_fn.ScheduledEvent) -> None:
             risk_score = 0
             ai_advice = clean_json_str # Fallback to raw text if JSON parsing fails
             
+        # Dynamically place hazard locations based on risk severity
+        hazard_points = []
+        if risk_level == "Critical":
+            # Simulate high-risk hotspots algorithmically
+            # (In production, you'd calculate these directly from satellite pixel mapping)
+            hazard_points = [
+                firestore.GeoPoint(lat_aceh + 0.002, lng_aceh + 0.001),
+                firestore.GeoPoint(lat_aceh - 0.001, lng_aceh - 0.003),
+            ]
+        elif risk_level == "Warning":
+            hazard_points = [
+                firestore.GeoPoint(lat_aceh, lng_aceh),
+            ]
+            
         # Hardcoded safe routing points for the prototype
         safe_points = [
             firestore.GeoPoint(5.5500, 95.3167),
@@ -182,6 +196,7 @@ def run_sentinel_hub_check(event: scheduler_fn.ScheduledEvent) -> None:
             "riskLevel": risk_level,
             "predictedTime": firestore.SERVER_TIMESTAMP,
             "safeRoutePoints": safe_points,
+            "hazardPoints": hazard_points,
             "aiAdvice": ai_advice,
             "statusMessage": f"AI Sentinel Pipeline executed. Risk Score: {risk_score}",
             # Store raw satellite indices for the analytics dashboard
@@ -276,9 +291,8 @@ def send_fcm_on_critical_alert(event: firestore_fn.Event[firestore_fn.Change[fir
 @https_fn.on_request(cors=https_fn.options.CorsOptions(cors_origins="*", cors_methods=["POST", "OPTIONS"]))
 def chat_with_ai(req: https_fn.Request) -> https_fn.Response:
     """
-    Streaming chatbot endpoint. Accepts POST { "message": "...", "context": "..." }
-    Calls Gemini with streaming and returns Server-Sent Events so Flutter
-    can display each word as it arrives — exactly like ChatGPT.
+    Chatbot endpoint. Accepts POST { "message": "...", "context": "..." }
+    Calls Gemini and returns the full reply as JSON: { "reply": "..." }
     """
     if req.method == "OPTIONS":
         return https_fn.Response("", status=204)
@@ -303,27 +317,18 @@ def chat_with_ai(req: https_fn.Request) -> https_fn.Response:
         Current situation context: {context}
         Be concise (2-3 sentences max), compassionate, and practical. Respond in the same language as the user."""
 
-        def generate():
-            # Stream tokens using Gemini's streaming API
-            for chunk in client.models.generate_content_stream(
-                model="gemini-2.0-flash",
-                contents=[
-                    {"role": "user", "parts": [{"text": system_prompt + "\n\nUser: " + user_message}]}
-                ]
-            ):
-                if chunk.text:
-                    # Server-Sent Events format: each line starts with 'data: '
-                    yield f"data: {json.dumps({'token': chunk.text})}\n\n"
-            yield "data: [DONE]\n\n"
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                {"role": "user", "parts": [{"text": system_prompt + "\n\nUser: " + user_message}]}
+            ]
+        )
+
+        reply = response.text or "I'm unable to provide a response right now."
 
         return https_fn.Response(
-            generate(),
+            json.dumps({"reply": reply}),
             status=200,
-            content_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            }
         )
 
     except Exception as e:

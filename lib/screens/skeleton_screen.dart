@@ -14,6 +14,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../main.dart' show flutterLocalNotificationsPlugin;
 import '../utils/map_injector.dart'
     if (dart.library.html) '../utils/map_injector_web.dart';
+import '../providers/theme_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Chat message model
@@ -37,6 +38,8 @@ class _ChatMessage {
 // ---------------------------------------------------------------------------
 // Main Screen
 // ---------------------------------------------------------------------------
+enum ZoneDisplayMode { all, red, green }
+
 class SkeletonScreen extends ConsumerStatefulWidget {
   const SkeletonScreen({super.key});
 
@@ -56,23 +59,21 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   final List<_ChatMessage> _chatMessages = [];
   Position? _userPosition;
   bool _locationPermissionDenied = false;
+  String _selectedLanguage = 'English';
+  final List<String> _languages = ['English', 'Indonesian', 'Acehnese'];
+  ZoneDisplayMode _zoneDisplayMode = ZoneDisplayMode.all;
 
-  // FIX 2: Static polygon constants — only computed once.
-  static const List<LatLng> _hazardZone = [
-    LatLng(5.5450, 95.3100),
-    LatLng(5.5450, 95.3350),
-    LatLng(5.5650, 95.3350),
-    LatLng(5.5650, 95.3100),
+  // Static mock hazard points for testing purposes
+  static const List<LatLng> _mockHazardPoints = [
+    LatLng(5.5550, 95.3167),
+    LatLng(5.5450, 95.3267),
   ];
-  static final Set<Polygon> _criticalPolygons = {
-    Polygon(
-      polygonId: const PolygonId('risk_area'),
-      points: _hazardZone,
-      fillColor: Colors.red.withValues(alpha: 0.3),
-      strokeColor: Colors.red,
-      strokeWidth: 2,
-    ),
-  };
+
+  // Static mock safe zones (high ground / evacuation centers)
+  static const List<LatLng> _mockSafeZones = [
+    LatLng(5.5200, 95.3150), // Inland elevated area to the South
+    LatLng(5.5300, 95.3400), // Elevated area SE
+  ];
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -136,12 +137,40 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     }
   }
 
-  bool _isUserInRedZone() {
+  bool _isUserInRedZone(AlertModel alert) {
+    if (_userPosition == null || alert.riskLevel != 'Critical') return false;
+    final userLat = _userPosition!.latitude;
+    final userLng = _userPosition!.longitude;
+    
+    // Check if user is within 1 kilometer (1000 meters) of any active hazard point
+    for (LatLng hazard in _mockHazardPoints) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        userLat, userLng, 
+        hazard.latitude, hazard.longitude
+      );
+      if (distanceInMeters <= 1000) {  
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isUserInGreenZone() {
     if (_userPosition == null) return false;
-    final lat = _userPosition!.latitude;
-    final lng = _userPosition!.longitude;
-    // Simple bounding-box check against _hazardZone polygon
-    return lat >= 5.5450 && lat <= 5.5650 && lng >= 95.3100 && lng <= 95.3350;
+    final userLat = _userPosition!.latitude;
+    final userLng = _userPosition!.longitude;
+    
+    // Check if user is within 1 kilometer of a designated high-ground safe zone
+    for (LatLng safeZone in _mockSafeZones) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        userLat, userLng, 
+        safeZone.latitude, safeZone.longitude
+      );
+      if (distanceInMeters <= 1000) {  
+        return true;
+      }
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -198,7 +227,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     try {
       final response = await http.get(
         Uri.parse(
-          'http://127.0.0.1:5001/sentinel-sumatra-3c917/us-central1/test_sentinel_hub_check',
+          'http://10.0.2.2:5001/sentinel-sumatra-3c917/us-central1/test_sentinel_hub_check',
         ),
       );
       if (mounted) {
@@ -230,6 +259,10 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
       'predictedTime': FieldValue.serverTimestamp(),
       'aiAdvice': mockAdvice,
       'statusMessage': 'Mock critical alert triggered manually for testing.',
+      'hazardPoints': [
+        const GeoPoint(5.5550, 95.3167),
+        const GeoPoint(5.5450, 95.3267),
+      ],
     }, SetOptions(merge: true));
     _previousRiskLevel = null;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -247,13 +280,13 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     setState(() {
       _chatMessages.add(_ChatMessage(text: message, isUser: true));
       _chatMessages.add(
-        _ChatMessage(text: '', isUser: false, isStreaming: true),
+        _ChatMessage(text: '...', isUser: false, isStreaming: true),
       );
       _chatLoading = true;
     });
     _scrollChatToBottom();
 
-    final context =
+    final contextStr =
         'Risk Level: ${alert.riskLevel}. '
         'NDVI: ${alert.ndvi.toStringAsFixed(2)}, '
         'BSI: ${alert.bsi.toStringAsFixed(2)}, '
@@ -261,59 +294,80 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
         'Moisture: ${alert.moisture.toStringAsFixed(2)}. '
         'AI Advice: ${alert.aiAdvice}';
 
+    // Call Gemini REST API directly — no emulator or Cloud Function needed.
+    final geminiApiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    debugPrint('DEBUG: Using Gemini key starting with: ${geminiApiKey.isEmpty ? "EMPTY" : geminiApiKey.substring(0, 12)}...');
+    if (geminiApiKey.isEmpty) {
+      setState(() {
+        _chatMessages[_chatMessages.length - 1] = _chatMessages.last.copyWith(
+          text: 'GEMINI_API_KEY is missing from .env file.',
+          isStreaming: false,
+        );
+        _chatLoading = false;
+      });
+      return;
+    }
+
     try {
-      // Use the HTTP Cloud Function URL (emulator or production)
-      const String baseUrl =
-          'http://127.0.0.1:5001/sentinel-sumatra-3c917/us-central1/chat_with_ai';
+      final systemPrompt =
+          'You are Sentinel AI, a disaster-resilience assistant for Aceh Jaya, Indonesia. '
+          'You help residents understand flood and landslide risks, give safety advice, and explain satellite data. '
+          'Current situation context: $contextStr '
+          'Format your response strictly as regular text. Do NOT use markdown. '
+          'Do NOT use bold text. Do NOT use any asterisks (*) or dashes (-). '
+          'Use standard unicode dots (•) for listing items. Keep it to one short paragraph. '
+          'Respond smoothly and naturally in $_selectedLanguage.';
 
-      final request = http.Request('POST', Uri.parse(baseUrl))
-        ..headers['Content-Type'] = 'application/json'
-        ..body = jsonEncode({'message': message, 'context': context});
+      final response = await http
+          .post(
+            Uri.parse(
+              'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$geminiApiKey',
+            ),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'contents': [
+                {
+                  'role': 'user',
+                  'parts': [
+                    {'text': '$systemPrompt\n\nUser: $message'},
+                  ],
+                },
+              ],
+              'generationConfig': {'maxOutputTokens': 2000},
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
-      );
-
-      // Read streaming SSE tokens
-      String accumulated = '';
-      await for (final chunk in streamedResponse.stream.transform(
-        utf8.decoder,
-      )) {
-        for (final line in chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            final data = line.substring(6).trim();
-            if (data == '[DONE]') break;
-            try {
-              final json = jsonDecode(data) as Map<String, dynamic>;
-              final token = json['token'] as String? ?? '';
-              accumulated += token;
-              if (mounted) {
-                setState(() {
-                  _chatMessages[_chatMessages.length - 1] = _chatMessages.last
-                      .copyWith(text: accumulated, isStreaming: true);
-                });
-                _scrollChatToBottom();
-              }
-            } catch (_) {}
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        
+        String reply = 'No response received.';
+        final candidates = data['candidates'] as List?;
+        if (candidates != null && candidates.isNotEmpty) {
+          final parts = candidates[0]['content']?['parts'] as List?;
+          if (parts != null && parts.isNotEmpty) {
+            reply = parts[0]['text'] as String? ?? reply;
+            // Force remove all markdown asterisks just in case the AI hallucinates them
+            reply = reply.replaceAll('**', '').replaceAll('*', '');
           }
         }
-      }
-
-      // Mark streaming as done
-      if (mounted) {
-        setState(() {
-          _chatMessages[_chatMessages.length - 1] = _chatMessages.last.copyWith(
-            isStreaming: false,
-          );
-          _chatLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _chatMessages[_chatMessages.length - 1] = _chatMessages.last
+                .copyWith(text: reply.trim(), isStreaming: false);
+            _chatLoading = false;
+          });
+          _scrollChatToBottom();
+        }
+      } else {
+        throw Exception('Gemini error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
+      debugPrint('Chat error: $e');
       if (mounted) {
         setState(() {
           _chatMessages[_chatMessages.length - 1] = _chatMessages.last.copyWith(
-            text:
-                'Sorry, I couldn\'t connect to the AI. Make sure the emulator is running.',
+            text: 'Error: ${e.toString().replaceAll('Exception: ', '')}',
             isStreaming: false,
           );
           _chatLoading = false;
@@ -321,6 +375,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
       }
     }
   }
+
 
   void _scrollChatToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -345,6 +400,20 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
       appBar: AppBar(
         title: const Text('Sentinel Sumatra'),
         actions: [
+          IconButton(
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.amber
+                  : null, // Default icon color for light mode
+            ),
+            tooltip: 'Toggle Theme',
+            onPressed: () {
+              ref.read(themeProvider.notifier).toggle();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.send_time_extension),
             tooltip: 'Mock Alert',
@@ -412,15 +481,20 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   }
 
   Widget _buildChatPanel(AlertModel alert) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: MediaQuery.of(context).size.width - 32,
       height: 380,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1B2A),
+        color: isDark ? const Color(0xFF0D1B2A) : Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1A237E), width: 1.5),
+        border: Border.all(
+            color: isDark ? const Color(0xFF1A237E) : Colors.blue[200]!,
+            width: 1.5),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
+              blurRadius: 20),
         ],
       ),
       child: Column(
@@ -428,9 +502,9 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
           // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A237E),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A237E) : Colors.blue[700],
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
@@ -464,19 +538,60 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                   'Live',
                   style: TextStyle(color: Colors.greenAccent, fontSize: 11),
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  height: 24,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedLanguage,
+                      dropdownColor:
+                          isDark ? const Color(0xFF1A237E) : Colors.blue[700],
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Colors.white70,
+                        size: 16,
+                      ),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      items: _languages.map((String lang) {
+                        return DropdownMenuItem<String>(
+                          value: lang,
+                          child: Text(lang),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedLanguage = newValue;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           // Messages
           Expanded(
             child: _chatMessages.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Text(
                         '🤖 Ask me about flood risk,\nevacuation routes, or satellite data.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                        style: TextStyle(
+                            color: isDark ? Colors.white54 : Colors.grey[600],
+                            fontSize: 13),
                       ),
                     ),
                   )
@@ -490,21 +605,29 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
           // Input
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: Color(0xFF1A237E))),
+            decoration: BoxDecoration(
+              border: Border(
+                  top: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF1A237E)
+                          : Colors.blue[200]!)),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _chatController,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
+                    style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 13),
+                    decoration: InputDecoration(
                       hintText: 'Ask about flood risk or evacuation...',
-                      hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
+                      hintStyle: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.grey[500],
+                          fontSize: 12),
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 8,
                       ),
@@ -541,6 +664,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   }
 
   Widget _buildChatBubble(_ChatMessage msg) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Align(
       alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -550,9 +674,14 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
           maxWidth: MediaQuery.of(context).size.width * 0.65,
         ),
         decoration: BoxDecoration(
-          color: msg.isUser ? const Color(0xFF1A237E) : const Color(0xFF1B2631),
+          color: msg.isUser
+              ? (isDark ? const Color(0xFF1A237E) : Colors.blue[600])
+              : (isDark ? const Color(0xFF1B2631) : Colors.white),
           borderRadius: BorderRadius.circular(12),
-          border: msg.isUser ? null : Border.all(color: Colors.white12),
+          border: msg.isUser
+              ? null
+              : Border.all(
+                  color: isDark ? Colors.white12 : Colors.grey[300]!),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -562,7 +691,9 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
               child: Text(
                 msg.text.isEmpty && msg.isStreaming ? '...' : msg.text,
                 style: TextStyle(
-                  color: msg.isUser ? Colors.white : Colors.greenAccent,
+                  color: msg.isUser
+                      ? Colors.white
+                      : (isDark ? Colors.greenAccent : Colors.teal[800]),
                   fontSize: 12,
                 ),
               ),
@@ -588,14 +719,41 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   // Body
   // ---------------------------------------------------------------------------
   Widget _buildBody(AlertModel alert) {
-    final Set<Polyline> polylines = {
-      Polyline(
-        polylineId: const PolylineId('safe_route'),
-        points: alert.safeRoutePoints,
-        color: Colors.blue,
-        width: 5,
-      ),
-    };
+    final Set<Polyline> polylines = {};
+
+    final Set<Circle> mapCircles = {};
+    
+    // 1. Draw Red Hazard Circles
+    if (_zoneDisplayMode == ZoneDisplayMode.all || _zoneDisplayMode == ZoneDisplayMode.red) {
+      for (int i = 0; i < _mockHazardPoints.length; i++) {
+        mapCircles.add(
+          Circle(
+            circleId: CircleId('hazard_$i'),
+            center: _mockHazardPoints[i],
+            radius: 1000.0, // 1 km danger radius around the coordinates
+            fillColor: Colors.red.withValues(alpha: 0.3),
+            strokeColor: Colors.red,
+            strokeWidth: 3,
+          ),
+        );
+      }
+    }
+
+    // 2. Draw Green Safe Zone Circles
+    if (_zoneDisplayMode == ZoneDisplayMode.all || _zoneDisplayMode == ZoneDisplayMode.green) {
+      for (int i = 0; i < _mockSafeZones.length; i++) {
+        mapCircles.add(
+          Circle(
+            circleId: CircleId('safezone_$i'),
+            center: _mockSafeZones[i],
+            radius: 1000.0, // 1 km safe radius
+            fillColor: Colors.green.withValues(alpha: 0.3),
+            strokeColor: Colors.greenAccent,
+            strokeWidth: 3,
+          ),
+        );
+      }
+    }
 
     return Column(
       children: [
@@ -603,17 +761,58 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
         Expanded(
           flex: 1,
           child: _isMapReady
-              ? GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(5.5500, 95.3167),
-                    zoom: 13,
-                  ),
-                  polygons: alert.riskLevel == 'Critical'
-                      ? _criticalPolygons
-                      : {},
-                  polylines: polylines,
-                  myLocationEnabled: false,
-                  myLocationButtonEnabled: false,
+              ? Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: const CameraPosition(
+                        target: LatLng(5.5500, 95.3167),
+                        zoom: 13,
+                      ),
+                      circles: mapCircles,
+                      polylines: polylines,
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: true,
+                    ),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Transform.scale(
+                        scale: 0.85,
+                        alignment: Alignment.topLeft,
+                        child: SegmentedButton<ZoneDisplayMode>(
+                          segments: const [
+                            ButtonSegment(
+                                value: ZoneDisplayMode.all,
+                                label: Text('All Zones', style: TextStyle(fontSize: 12)),
+                                icon: Icon(Icons.map, size: 18)),
+                            ButtonSegment(
+                                value: ZoneDisplayMode.green,
+                                label: Text('Safe', style: TextStyle(fontSize: 12)),
+                                icon: Icon(Icons.verified_user_rounded, size: 18)),
+                            ButtonSegment(
+                                value: ZoneDisplayMode.red,
+                                label: Text('Danger', style: TextStyle(fontSize: 12)),
+                                icon: Icon(Icons.warning_amber_rounded, size: 18)),
+                          ],
+                          selected: {_zoneDisplayMode},
+                          onSelectionChanged: (Set<ZoneDisplayMode> newSelection) {
+                            setState(() {
+                              _zoneDisplayMode = newSelection.first;
+                            });
+                          },
+                          style: SegmentedButton.styleFrom(
+                            backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.8),
+                            selectedForegroundColor: Colors.white,
+                            selectedBackgroundColor: _zoneDisplayMode == ZoneDisplayMode.red
+                                ? Colors.red[800]
+                                : _zoneDisplayMode == ZoneDisplayMode.green
+                                  ? Colors.green[800]
+                                  : const Color(0xFF1A237E),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 )
               : const Center(child: CircularProgressIndicator()),
         ),
@@ -627,7 +826,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 children: [
                   _buildStatusCard(alert),
                   const SizedBox(height: 8),
-                  _buildSafetyZoneCard(),
+                  _buildSafetyZoneCard(alert),
                   const SizedBox(height: 8),
                   _buildSatelliteCards(alert),
                 ],
@@ -644,6 +843,8 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   // ---------------------------------------------------------------------------
   Widget _buildStatusCard(AlertModel alert) {
     final isNormal = alert.riskLevel != 'Critical';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Card(
       elevation: 4,
       child: Padding(
@@ -659,7 +860,9 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: isNormal ? Colors.white : Colors.redAccent,
+                      color: isNormal 
+                          ? (isDark ? Colors.white : Colors.black87) 
+                          : Colors.redAccent,
                     ),
                   ),
                   Text(
@@ -669,7 +872,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                   const SizedBox(height: 4),
                   Text(
                     'Status: ${alert.statusMessage}',
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600]),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 2,
                   ),
@@ -709,7 +912,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   // ---------------------------------------------------------------------------
   // Safety Zone Card
   // ---------------------------------------------------------------------------
-  Widget _buildSafetyZoneCard() {
+  Widget _buildSafetyZoneCard(AlertModel alert) {
     if (_locationPermissionDenied) {
       return Card(
         color: Colors.grey[900],
@@ -739,15 +942,39 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
       );
     }
 
-    final inRedZone = _isUserInRedZone();
+    final inRedZone = _isUserInRedZone(alert);
+    final inGreenZone = _isUserInGreenZone();
+    
+    Color cardColor;
+    IconData statusIcon;
+    String statusTitle;
+    String statusDesc;
+
+    if (inRedZone) {
+      cardColor = Colors.red[900]!;
+      statusIcon = Icons.warning_amber_rounded;
+      statusTitle = '⚠️ You Are in the Red Zone';
+      statusDesc = 'Evacuate immediately! Move to higher ground now.';
+    } else if (inGreenZone) {
+      cardColor = Colors.green[800]!;
+      statusIcon = Icons.verified_user_rounded;
+      statusTitle = '✅ Optimal Safe Zone (High Ground)';
+      statusDesc = 'You are in a designated high-elevation area safely away from floods.';
+    } else {
+      cardColor = Colors.blueGrey[800]!;
+      statusIcon = Icons.check_circle;
+      statusTitle = '✅ You Are Outside the Danger Zone';
+      statusDesc = 'Your current location is not in an immediate red zone, but stay alert.';
+    }
+
     return Card(
-      color: inRedZone ? Colors.red[900] : Colors.green[900],
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
             Icon(
-              inRedZone ? Icons.warning_amber_rounded : Icons.check_circle,
+              statusIcon,
               color: Colors.white,
               size: 36,
             ),
@@ -757,9 +984,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    inRedZone
-                        ? '⚠️ You Are in the Red Zone'
-                        : '✅ You Are in the Safe Zone',
+                    statusTitle,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -767,9 +992,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                     ),
                   ),
                   Text(
-                    inRedZone
-                        ? 'Evacuate immediately! Move to higher ground now.'
-                        : 'Your current location is outside the hazard area.',
+                    statusDesc,
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
@@ -785,17 +1008,19 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   // Satellite Analytics Cards
   // ---------------------------------------------------------------------------
   Widget _buildSatelliteCards(AlertModel alert) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 6),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             '📡 Satellite Intelligence',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 13,
-              color: Colors.white70,
+              color: isDark ? Colors.white70 : Colors.black87,
             ),
           ),
         ),
@@ -843,7 +1068,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 value: alert.aiAdvice.length > 60
                     ? '${alert.aiAdvice.substring(0, 57)}...'
                     : alert.aiAdvice,
-                color: const Color(0xFF1A237E),
+                color: isDark ? const Color(0xFF1A237E) : Colors.blueAccent,
                 tooltip: alert.aiAdvice,
                 smallText: true,
               ),
@@ -862,14 +1087,17 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     required String tooltip,
     bool smallText = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Tooltip(
       message: tooltip,
       child: Card(
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: isDark ? 0.15 : 0.05),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: color.withValues(alpha: 0.5)),
         ),
+        elevation: 0,
         child: Padding(
           padding: const EdgeInsets.all(10.0),
           child: Column(
@@ -883,7 +1111,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                     child: Text(
                       label,
                       style: TextStyle(
-                        color: Colors.white60,
+                        color: isDark ? Colors.white60 : Colors.black54,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
@@ -896,7 +1124,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
               Text(
                 value,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: isDark ? Colors.white : Colors.black87,
                   fontSize: smallText ? 10 : 13,
                   fontWeight: FontWeight.bold,
                 ),

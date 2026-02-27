@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'screens/skeleton_screen.dart';
 import 'firebase_options.dart';
 import 'services/firebase_service.dart';
+import 'providers/theme_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -51,16 +52,27 @@ void main() async {
   runApp(const ProviderScope(child: SentinelSumatraApp()));
 }
 
-class SentinelSumatraApp extends StatelessWidget {
+class SentinelSumatraApp extends ConsumerWidget {
   const SentinelSumatraApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
       title: 'Sentinel Sumatra',
+      themeMode: themeMode,
       theme: ThemeData(
+        brightness: Brightness.light,
+        primaryColor: Colors.deepPurple,
+        scaffoldBackgroundColor: Colors.grey[100],
+        cardTheme: const CardThemeData(color: Colors.white),
+      ),
+      darkTheme: ThemeData(
         brightness: Brightness.dark,
         primaryColor: Colors.deepPurple,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardTheme: CardThemeData(color: Colors.grey[900]),
       ),
       home: const SkeletonScreen(),
     );
