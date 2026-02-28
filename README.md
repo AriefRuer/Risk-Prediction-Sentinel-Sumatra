@@ -202,3 +202,112 @@ sentinel_sumatra/
 | `Cannot enable MyLocation layer` | Location permission check on emulator | Safe to ignore — `myLocationEnabled` is disabled in code |
 | `E/GoogleApiManager: SecurityException` | Google Play Services not fully configured on emulator | Google Maps still loads map tiles correctly |
 | `UnknownHostException: firestore.googleapis.com` | Emulator network latency | Firestore retries automatically; uses cached data in the meantime |
+
+---
+---
+
+# Sentinel Sumatra — Project Overview
+
+## 🌍 The Problem
+
+In regions like **Aceh Jaya, Indonesia**, communities live under the constant threat of sudden floods and landslides triggered by torrential rain and deforestation. The challenge is clear:
+
+- **Early warning systems are reactive, not proactive.** Most alerts arrive *after* disaster has already begun.
+- **Data is too complex.** Satellite imagery and spectral indices are meaningless to everyday residents.
+- **Connectivity fails when it matters most.** When disaster strikes, cellular networks go down — cutting people off from life-saving guidance.
+
+There is a critical need for a **localized, intelligent, and offline-capable** disaster resilience platform that puts advanced satellite science directly into the hands of at-risk communities.
+
+---
+
+## 💡 Our Solution
+
+**Sentinel Sumatra** is a mobile-first disaster resilience platform that shifts the paradigm from *reacting to disasters* to *predicting and preparing for them*. By combining real-time Copernicus Sentinel-2 satellite imagery with Google Gemini AI, the app delivers localized, human-readable risk assessments — before disaster strikes.
+
+---
+
+## ✨ Core Features
+
+### 🗺️ Live Interactive Risk Map
+A real-time Google Maps interface visualizes danger zones (Red Zones) and designated safe evacuation areas (Green Zones) as intuitive overlays. Users instantly see whether their current location is safe or at risk.
+
+### 📡 Satellite Intelligence Dashboard
+Complex satellite spectral data — vegetation health (NDVI), surface water levels (NDWI), soil erosion (BSI), and ground moisture — is translated into plain-language risk indicators like *"Deforested (High Slide Risk) 🔴"* and *"Dry Surface 🟢"*, with raw index values displayed for full transparency.
+
+### 📍 GPS Safety Tracking
+The app monitors the user's GPS position in real time. If you enter a critical hazard zone, it immediately alerts you and renders a navigation polyline to the nearest safe zone. A **"Navigate to Safe Zone"** button redirects to Google Maps for turn-by-turn directions.
+
+### 🤖 Sentinel AI Advisor
+A streaming conversational chatbot powered by Google Gemini. Users can ask questions in **English, Indonesian, or Acehnese** and receive compassionate, practical survival guidance grounded in the latest satellite data — delivered word-by-word in real time.
+
+### 🆘 Offline SOS Toolkit
+When connectivity fails, the Offline SOS Toolkit provides:
+1. **Basic Survival Protocols** — Cached safe-zone locations and step-by-step survival guides accessible without internet.
+2. **SMS Emergency Broadcast** — A one-tap button that drafts an SOS text message to the national emergency number with the user's exact raw GPS coordinates, using SMS (which works even when mobile data is down).
+3. **SOS Beacon** — Activates the device's flashlight as an emergency strobe, helping rescue teams locate the user in low-visibility conditions.
+
+---
+
+## 🔧 Google Technology Integration
+
+Sentinel Sumatra is built entirely on the Google ecosystem, leveraging multiple Google technologies to deliver a reliable, intelligent, and scalable solution.
+
+### 🧠 Google Gemini 2.0 Flash — Artificial Intelligence
+
+**The Problem:** Raw satellite indices like NDVI = 0.482 or BSI = 0.073 are scientifically precise but meaningless to the average resident trying to decide whether to evacuate.
+
+**How We Use It:**
+
+- **Backend Risk Analysis Pipeline:**
+  A Firebase Cloud Function runs on a scheduled interval, automatically fetching the latest satellite imagery from the Copernicus Sentinel-2 constellation. The raw spectral data (vegetation, moisture, erosion, and water indices) is sent directly to Gemini, which acts as an automated *Disaster Risk Scientist*. Gemini analyzes the combination of all four indices and returns a consolidated **0–100 hazard score** along with plain-language emergency advice. This score determines whether the community risk level is **Safe**, **Warning**, or **Critical**.
+
+- **Frontend AI Advisor Chatbot:**
+  Gemini also powers the in-app conversational AI. Users can type questions and receive streaming, context-aware responses based on the live environment data. The chatbot supports **multilingual interaction** (English, Indonesian, and local Acehnese dialect), ensuring accessibility for local communities.
+
+### 🗺️ Google Maps Platform — Maps SDK for Flutter
+
+**The Problem:** People need to instantly understand *where* is safe and *where* is dangerous, without reading data tables or coordinates.
+
+**How We Use It:**
+
+We render the entire primary interface on Google Maps. Hazard zones are drawn as red **Polygons** and **Circles**, while high-ground safe evacuation zones are highlighted in green. When a user is detected inside a danger zone, the app dynamically draws a **Polyline** representing the shortest escape route to the nearest safe zone. A redirect to Google Maps provides full turn-by-turn navigation.
+
+### ☁️ Firebase — Cloud Backend Infrastructure
+
+**The Problem:** Real-time data streaming, push notifications, and offline reliability are technically difficult to build from scratch — especially under disaster conditions where uptime is non-negotiable.
+
+**How We Use It:**
+
+| Firebase Service | Role in the System |
+|------------------|-------------------|
+| **Cloud Firestore** | The real-time data backbone. When the AI pipeline updates the risk score, Firestore instantly streams the new data to every connected device — no manual refresh needed. Firestore's **Offline Persistence** also caches the latest safe-zone coordinates locally, enabling the Offline SOS Toolkit to function even when all network connectivity is lost. |
+| **Cloud Functions (Python)** | Handles all server-side processing securely in the cloud. Manages the scheduled satellite data polling, hosts the Gemini AI inference pipeline, runs the chatbot endpoint, and keeps all API keys completely hidden from the user's device. |
+| **Cloud Messaging (FCM)** | When the AI escalates a risk level to **"Critical"**, the Cloud Function triggers FCM to broadcast high-priority push notifications to all registered devices — ensuring residents are alerted instantly, even if the app is in the background. |
+
+### 📱 Flutter — Cross-Platform Frontend
+
+The entire mobile application is built with **Flutter**, Google's cross-platform UI toolkit. A single codebase targets Android (and can be extended to iOS and web), enabling rapid iteration and consistent behavior across devices.
+
+---
+
+## 🌱 Alignment with UN Sustainable Development Goals
+
+Sentinel Sumatra directly addresses two of the United Nations' Sustainable Development Goals.
+
+### SDG 11 — Sustainable Cities and Communities
+
+> **Target 11.B:** Substantially increase the number of cities and human settlements adopting and implementing integrated policies and plans towards inclusion, resource efficiency, mitigation and adaptation to climate change, and resilience to disasters.
+
+**Our Impact:** Sentinel Sumatra democratizes access to satellite-based early warning data that was previously only available to government agencies and research institutions. By providing localized, AI-driven evacuation guidance directly on a mobile device — with full offline functionality — the platform ensures that even the most marginalized and infrastructure-poor communities have a reliable lifeline during crisis events.
+
+### SDG 15 — Life on Land
+
+> **Target 15.3:** By 2030, combat desertification, restore degraded land and soil, including land affected by desertification, drought, and floods.
+
+**Our Impact:** Beyond disaster response, the platform continuously monitors critical environmental health indicators — specifically the **Normalized Difference Vegetation Index (NDVI)** for deforestation tracking and the **Bare Soil Index (BSI)** for erosion detection. These are the very root causes of severe flooding and landslides. By making this data visible and understandable to local communities, the app raises awareness of habitat destruction and can inform grassroots conservation efforts — helping people understand that **protecting their forests is the first step in preventing natural disasters**.
+
+---
+
+## 📄 License
+
+This project was built for [KitaHack 2026](https://kitahack.gdgcloud.com/).
