@@ -4,7 +4,7 @@ import 'dart:html' as html;
 
 void injectWebMapsApiKeySafely(String apiKey) {
   final script = html.ScriptElement()
-    ..src = 'https://maps.googleapis.com/maps/api/js?key=\$apiKey'
+    ..src = 'https://maps.googleapis.com/maps/api/js?key=$apiKey'
     ..type = 'text/javascript';
 
   html.document.head?.append(script);
