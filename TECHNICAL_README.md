@@ -9,7 +9,7 @@ It is a proactive disaster resilience platform for Aceh Jaya, Indonesia. It uses
 
 ## 1. Technical Architecture
 
-Sentinel Sumatra employs a modern, serverless, and highly decoupled architecture leveraging the full power of the Google Cloud and Firebase ecosystems.
+Sentinel Sumatra employs a modern, serverless, and highly decoupled architecture leveraging the full power of the Google Cloud and Firebase ecosystems. This structure ensures the mobile app remains lightweight and responsive on the user's device, while handling intensive, real-time AI calculations securely in the cloud. By completely decoupling the frontend mapping layer from the backend AI pipeline, we guarantee scalability and ease of maintenance.
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
@@ -26,7 +26,7 @@ Sentinel Sumatra employs a modern, serverless, and highly decoupled architecture
 
 ## 2. Implementation Details
 
-Building the predictive engine required careful orchestration between satellite data and AI inference.
+Building the predictive engine required careful orchestration between raw satellite telemetry, AI inference, and mobile UI rendering. This section breaks down the specific technical techniques we used to bridge the gap between complex earth observation data and an intuitive, Figma-inspired mobile user experience. We prioritized offline resiliency and transparent AI logic across the entire stack.
 
 | Feature Area | Implementation Approach |
 | :--- | :--- |
@@ -39,7 +39,7 @@ Building the predictive engine required careful orchestration between satellite 
 
 ## 3. Challenges Faced
 
-Integrating live satellite science into a consumer mobile app presented several unique hurdles.
+Integrating live satellite science into a consumer mobile app presented several unique hurdles. From handling unpredictable open-source API responses to refining the map's interactive UX, here is how we diagnosed and solved the most critical technical roadblocks during our prototyping phase.
 
 | Challenge | Impact | Implemented Solution |
 | :--- | :--- | :--- |
@@ -51,7 +51,7 @@ Integrating live satellite science into a consumer mobile app presented several 
 
 ## 4. Future Roadmap
 
-We view the current prototype as the foundational layer. Our roadmap for scaling Sentinel Sumatra focuses on hardware integration and expanded reach.
+We view the current prototype as merely the foundational layer. To evolve Sentinel Sumatra from a local proof-of-concept into a robust national resilience infrastructure, we have mapped out a multi-phase rollout. This roadmap heavily focuses on expanding our geo-spatial processing capabilities, integrating physical hardware, and establishing peer-to-peer network reliability.
 
 | Phase | Timeline | Primary Objectives |
 | :--- | :--- | :--- |
