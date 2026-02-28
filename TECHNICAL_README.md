@@ -3,7 +3,7 @@
 This document serves as the technical companion to our main project overview, detailing the architecture, implementation, challenges, and future of Sentinel Sumatra in a structured format.
 
 **What is Sentinel Sumatra?**
-It is a proactive disaster resilience platform for Aceh Jaya, Indonesia. It uses Copernicus Sentinel-2 satellite imagery to monitor flood and landslide risks (like deforestation and soil moisture) in real time. Google Gemini AI translates this raw data into a localized risk score and powers an interactive, multilingual chat assistant. Built on Flutter and Firebase, it provides affected communities with live risk maps, automated push alerts, and an offline SOS toolkit, ensuring they receive critical emergency guidance even when cellular networks fail.
+It is a proactive disaster resilience platform that uses Copernicus Sentinel-2 satellite imagery to monitor flood and landslide risks (like deforestation and soil moisture) in real time. Google Gemini AI translates this raw data into a localized risk score and powers an interactive, multilingual chat assistant. Built on Flutter and Firebase, it provides affected communities with live risk maps, automated push alerts, and an offline SOS toolkit, ensuring they receive critical emergency guidance even when cellular networks fail.
 
 ---
 
