@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui'; // For BackdropFilter / glassmorphism
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -466,6 +467,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
           children: [
             FloatingActionButton.extended(
               heroTag: 'offline_fab',
+              elevation: 2,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -478,44 +480,46 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                   ),
                 );
               },
-              backgroundColor: Colors.red[900],
-              icon: const Icon(Icons.offline_bolt, color: Colors.white),
+              backgroundColor: const Color(0xFFDC2626), // Modern red
+              icon: const Icon(Icons.offline_bolt_rounded, color: Colors.white),
               label: const Text(
                 'Offline SOS',
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             const SizedBox(width: 12),
             FloatingActionButton.extended(
               heroTag: 'chat_fab',
+              elevation: 2,
               onPressed: () => setState(() => _chatOpen = !_chatOpen),
-              backgroundColor: const Color(0xFF1A237E),
+              backgroundColor: const Color(0xFF1E293B), // Modern dark
               icon: Icon(
-                _chatOpen ? Icons.close : Icons.smart_toy_rounded,
+                _chatOpen ? Icons.close_rounded : Icons.smart_toy_rounded,
                 color: Colors.white,
               ),
               label: Text(
                 _chatOpen ? 'Close' : 'AI Advisor',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             const SizedBox(width: 12),
             FloatingActionButton.extended(
               heroTag: 'alert_fab',
+              elevation: 2,
               onPressed: _sendCriticalAlert,
-              backgroundColor: Colors.redAccent,
-              icon: const Icon(Icons.warning, color: Colors.white),
+              backgroundColor: const Color(0xFFF97316), // Modern vibrant orange
+              icon: const Icon(Icons.warning_rounded, color: Colors.white),
               label: const Text(
                 'Test Alert',
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -531,185 +535,202 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
       width: MediaQuery.of(context).size.width - 32,
       height: 380,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D1B2A) : Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF1A237E) : Colors.blue[200]!,
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
-            blurRadius: 20,
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1A237E) : Colors.blue[700],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+          child: Container(
+            color: Theme.of(context).cardTheme.color,
+            child: Column(
               children: [
-                const Icon(
-                  Icons.smart_toy_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Sentinel AI Advisor',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
+                // Header
                 Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.greenAccent,
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  'Live',
-                  style: TextStyle(color: Colors.greenAccent, fontSize: 11),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  height: 24,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedLanguage,
-                      dropdownColor: isDark
-                          ? const Color(0xFF1A237E)
-                          : Colors.blue[700],
-                      icon: const Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.white70,
-                        size: 16,
-                      ),
-                      style: const TextStyle(
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFF2563EB),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.smart_toy_rounded,
                         color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        size: 20,
                       ),
-                      items: _languages.map((String lang) {
-                        return DropdownMenuItem<String>(
-                          value: lang,
-                          child: Text(lang),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedLanguage = newValue;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Messages
-          Expanded(
-            child: _chatMessages.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        '🤖 Ask me about flood risk,\nevacuation routes, or satellite data.',
-                        textAlign: TextAlign.center,
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Sentinel AI',
                         style: TextStyle(
-                          color: isDark ? Colors.white54 : Colors.grey[600],
-                          fontSize: 13,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
                       ),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _chatScrollController,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: _chatMessages.length,
-                    itemBuilder: (ctx, i) => _buildChatBubble(_chatMessages[i]),
-                  ),
-          ),
-          // Input
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: isDark ? const Color(0xFF1A237E) : Colors.blue[200]!,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _chatController,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 13,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Ask about flood risk or evacuation...',
-                      hintStyle: TextStyle(
-                        color: isDark ? Colors.white38 : Colors.grey[500],
-                        fontSize: 12,
+                      const Spacer(),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF34D399), // Modern green tone
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Live',
+                        style: TextStyle(
+                          color: Color(0xFF34D399),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    onSubmitted: (v) => _sendChatMessage(v, alert),
-                  ),
-                ),
-                _chatLoading
-                    ? const SizedBox(
-                        width: 24,
+                      const SizedBox(width: 8),
+                      Container(
                         height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.greenAccent,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      )
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.send_rounded,
-                          color: Colors.greenAccent,
-                          size: 20,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedLanguage,
+                            dropdownColor: isDark
+                                ? const Color(0xFF1A237E)
+                                : Colors.blue[700],
+                            icon: const Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.white70,
+                              size: 16,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            items: _languages.map((String lang) {
+                              return DropdownMenuItem<String>(
+                                value: lang,
+                                child: Text(lang),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  _selectedLanguage = newValue;
+                                });
+                              }
+                            },
+                          ),
                         ),
-                        onPressed: () =>
-                            _sendChatMessage(_chatController.text, alert),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
                       ),
+                    ],
+                  ),
+                ),
+                // Messages
+                Expanded(
+                  child: _chatMessages.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              '🤖 Ask me about flood risk,\nevacuation routes, or satellite data.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white54
+                                    : Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _chatScrollController,
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _chatMessages.length,
+                          itemBuilder: (ctx, i) =>
+                              _buildChatBubble(_chatMessages[i]),
+                        ),
+                ),
+                // Input
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF1A237E)
+                            : Colors.blue[200]!,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _chatController,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 13,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Ask about flood risk or evacuation...',
+                            hintStyle: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.grey[500],
+                              fontSize: 12,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                          ),
+                          onSubmitted: (v) => _sendChatMessage(v, alert),
+                        ),
+                      ),
+                      _chatLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.greenAccent,
+                              ),
+                            )
+                          : IconButton(
+                              icon: const Icon(
+                                Icons.send_rounded,
+                                color: Colors.greenAccent,
+                                size: 20,
+                              ),
+                              onPressed: () =>
+                                  _sendChatMessage(_chatController.text, alert),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -843,11 +864,14 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
       );
     }
 
-    return Column(
+    return Stack(
       children: [
         // Map (top half)
-        Expanded(
-          flex: 1,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: MediaQuery.of(context).size.height * 0.45,
           child: _isMapReady
               ? Stack(
                   children: [
@@ -857,6 +881,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                         zoom: 13,
                       ),
                       circles: mapCircles,
+                      padding: const EdgeInsets.only(bottom: 20),
                       polylines: polylines,
                       myLocationEnabled: true,
                       myLocationButtonEnabled: true,
@@ -920,20 +945,56 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 )
               : const Center(child: CircularProgressIndicator()),
         ),
-        // Analytics cards (bottom half)
-        Expanded(
-          flex: 1,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  _buildStatusCard(alert),
-                  const SizedBox(height: 8),
-                  _buildSafetyZoneCard(alert),
-                  const SizedBox(height: 8),
-                  _buildSatelliteCards(alert),
-                ],
+        // Glassmorphism Analytics floating cards (bottom half)
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color?.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.6
+                        : 0.7,
+                  ),
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                    child: Column(
+                      children: [
+                        // Drag handle pill
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        _buildStatusCard(alert),
+                        const SizedBox(height: 8),
+                        _buildSafetyZoneCard(alert),
+                        const SizedBox(height: 8),
+                        _buildSatelliteCards(alert),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -950,7 +1011,6 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
-      elevation: 4,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
@@ -1021,7 +1081,6 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
   Widget _buildSafetyZoneCard(AlertModel alert) {
     if (_locationPermissionDenied) {
       return Card(
-        color: Colors.grey[900],
         child: const ListTile(
           leading: Icon(Icons.location_off, color: Colors.grey),
           title: Text(
@@ -1036,7 +1095,6 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     }
     if (_userPosition == null) {
       return Card(
-        color: Colors.grey[900],
         child: const ListTile(
           leading: SizedBox(
             width: 24,
@@ -1075,8 +1133,18 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
           'Your current location is not in an immediate red zone, but stay alert.';
     }
 
-    return Card(
-      color: cardColor,
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: cardColor.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -1199,6 +1267,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 value: _ndviLabel(alert.ndvi),
                 color: _ndviColor(alert.ndvi),
                 tooltip: 'NDVI: ${alert.ndvi.toStringAsFixed(3)}',
+                rawValue: 'NDVI: ${alert.ndvi.toStringAsFixed(3)}',
               ),
             ),
             const SizedBox(width: 8),
@@ -1209,6 +1278,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 value: _ndwiLabel(alert.ndwi),
                 color: _ndwiColor(alert.ndwi),
                 tooltip: 'NDWI: ${alert.ndwi.toStringAsFixed(3)}',
+                rawValue: 'NDWI: ${alert.ndwi.toStringAsFixed(3)}',
               ),
             ),
           ],
@@ -1224,6 +1294,8 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 color: _stabilityColor(alert.bsi, alert.moisture),
                 tooltip:
                     'BSI: ${alert.bsi.toStringAsFixed(3)} | Moisture: ${alert.moisture.toStringAsFixed(3)}',
+                rawValue:
+                    'BSI: ${alert.bsi.toStringAsFixed(3)} | MOIST: ${alert.moisture.toStringAsFixed(3)}',
               ),
             ),
             const SizedBox(width: 8),
@@ -1251,6 +1323,7 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
     required String value,
     required Color color,
     required String tooltip,
+    String? rawValue,
     bool smallText = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1297,6 +1370,30 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
+              if (rawValue != null) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white10
+                        : Colors.black.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    rawValue,
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1306,9 +1403,9 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
 
   // NDVI helpers
   String _ndviLabel(double v) {
-    if (v > 0.6) return 'Healthy 🟢';
-    if (v > 0.3) return 'Moderate 🟡';
-    return 'Degraded 🔴';
+    if (v > 0.6) return 'Dense (Low Slide Risk) 🟢';
+    if (v > 0.3) return 'Thinning (Monitor) 🟡';
+    return 'Deforested (High Slide Risk) 🔴';
   }
 
   Color _ndviColor(double v) {
@@ -1319,9 +1416,9 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
 
   // NDWI helpers
   String _ndwiLabel(double v) {
-    if (v > 0.2) return 'Flooding Likely 🔴';
-    if (v > 0.0) return 'Water Elevated 🟡';
-    return 'Normal 🟢';
+    if (v > 0.2) return 'Active Flooding 🔴';
+    if (v > 0.0) return 'Water Pooling 🟡';
+    return 'Dry Surface 🟢';
   }
 
   Color _ndwiColor(double v) {
@@ -1332,9 +1429,9 @@ class _SkeletonScreenState extends ConsumerState<SkeletonScreen>
 
   // Stability helpers (combined BSI + Moisture)
   String _stabilityLabel(double bsi, double moisture) {
-    if (bsi > 0.1 || moisture > 0.2) return 'Unstable 🔴';
-    if (bsi > 0.0 || moisture > 0.1) return 'Moderate 🟡';
-    return 'Stable 🟢';
+    if (bsi > 0.1 || moisture > 0.2) return 'Saturated/Eroding (High Risk) 🔴';
+    if (bsi > 0.0 || moisture > 0.1) return 'Vulnerable 🟡';
+    return 'Firm & Dry 🟢';
   }
 
   Color _stabilityColor(double bsi, double moisture) {

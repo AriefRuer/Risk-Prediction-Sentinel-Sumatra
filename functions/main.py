@@ -288,14 +288,21 @@ def send_fcm_on_critical_alert(event: firestore_fn.Event[firestore_fn.Change[fir
             print(f'Error sending FCM message: {e}')
 
 
-@https_fn.on_request(cors=https_fn.options.CorsOptions(cors_origins="*", cors_methods=["POST", "OPTIONS"]))
+@https_fn.on_request()
 def chat_with_ai(req: https_fn.Request) -> https_fn.Response:
     """
     Chatbot endpoint. Accepts POST { "message": "...", "context": "..." }
     Calls Gemini and returns the full reply as JSON: { "reply": "..." }
     """
+    # Handle CORS manually (compatible with all firebase-functions versions)
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
     if req.method == "OPTIONS":
-        return https_fn.Response("", status=204)
+        return https_fn.Response("", status=204, headers=cors_headers)
 
     try:
         body = req.get_json(silent=True) or {}
@@ -303,11 +310,11 @@ def chat_with_ai(req: https_fn.Request) -> https_fn.Response:
         context = body.get("context", "")
 
         if not user_message:
-            return https_fn.Response('{"error": "No message provided"}', status=400, content_type="application/json")
+            return https_fn.Response('{"error": "No message provided"}', status=400, headers=cors_headers, content_type="application/json")
 
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
         if not gemini_api_key:
-            return https_fn.Response('{"error": "AI service unavailable"}', status=503, content_type="application/json")
+            return https_fn.Response('{"error": "AI service unavailable"}', status=503, headers=cors_headers, content_type="application/json")
 
         from google import genai
         client = genai.Client(api_key=gemini_api_key)
@@ -329,8 +336,10 @@ def chat_with_ai(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(
             json.dumps({"reply": reply}),
             status=200,
+            headers=cors_headers,
+            content_type="application/json",
         )
 
     except Exception as e:
-        return https_fn.Response(f'{{"error": "{str(e)}"}}', status=500, content_type="application/json")
+        return https_fn.Response(f'{{"error": "{str(e)}"}}', status=500, headers=cors_headers, content_type="application/json")
 

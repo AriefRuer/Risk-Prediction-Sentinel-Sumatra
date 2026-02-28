@@ -8,7 +8,8 @@ class AlertModel {
   final String aiAdvice;
   final String statusMessage;
   final bool isFromCache;
-  final List<LatLng> hazardPoints; // Central coordinates of specific danger hot-spots.
+  final List<LatLng>
+  hazardPoints; // Central coordinates of specific danger hot-spots.
   // Satellite indices from Copernicus Sentinel-2
   final double ndvi; // Vegetation health
   final double bsi; // Bare soil / erosion risk
@@ -32,14 +33,13 @@ class AlertModel {
   factory AlertModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
 
-    if (data == null) {
+    if (data == null || !doc.exists) {
       return AlertModel(
-        riskLevel: 'Unknown',
+        riskLevel: 'Loading',
         predictedTime: DateTime.now(),
         safeRoutePoints: [],
-        aiAdvice: 'No data',
-        statusMessage: 'No data',
-        hazardPoints: [],
+        aiAdvice: 'Connecting to satellite network...',
+        statusMessage: 'Awaiting raw API data...',
       );
     }
 
@@ -47,7 +47,7 @@ class AlertModel {
     if (data['safeRoutePoints'] != null) {
       for (var point in data['safeRoutePoints']) {
         if (point is GeoPoint) {
-           points.add(LatLng(point.latitude, point.longitude));
+          points.add(LatLng(point.latitude, point.longitude));
         }
       }
     }
@@ -56,7 +56,7 @@ class AlertModel {
     if (data['hazardPoints'] != null) {
       for (var point in data['hazardPoints']) {
         if (point is GeoPoint) {
-           hazards.add(LatLng(point.latitude, point.longitude));
+          hazards.add(LatLng(point.latitude, point.longitude));
         }
       }
     }
